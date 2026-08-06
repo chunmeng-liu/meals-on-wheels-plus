@@ -1,0 +1,10 @@
+{
+  "name": "Meals on Wheels Plus",
+  "description": "Meal delivery and companion-service coordination MVP",
+  "stack": "container",
+  "addons": ["heroku-postgresql"],
+  "env": {
+    "JWT_SECRET": { "description": "Random secret of at least 32 bytes", "generator": "secret" },
+    "DEMO_SEED_ENABLED": { "description": "Create local demo accounts", "value": "false" }
+  }
+}

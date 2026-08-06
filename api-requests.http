@@ -1,0 +1,31 @@
+@baseUrl = http://localhost:8080
+
+### Login as senior
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{"email":"senior@mealsplus.local","password":"Senior123!"}
+
+### Copy token from login response
+@seniorToken = replace-me
+
+### Create meal request
+POST {{baseUrl}}/api/meal-requests
+Authorization: Bearer {{seniorToken}}
+Content-Type: application/json
+
+{"requestedDeliveryDate":"2099-08-10","mealType":"Heart-healthy","quantity":1,"dietaryNotes":"Low sodium","deliveryAddress":"123 Main Street"}
+
+### Create companion request
+POST {{baseUrl}}/api/companion-requests
+Authorization: Bearer {{seniorToken}}
+Content-Type: application/json
+
+{"requestedDate":"2099-08-10","requestedTime":"10:30","reason":"Medication reminder and companionship","serviceNotes":"Please knock loudly"}
+
+### View own requests
+GET {{baseUrl}}/api/meal-requests/my
+Authorization: Bearer {{seniorToken}}
+
+### Health
+GET {{baseUrl}}/api/health
