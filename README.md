@@ -154,7 +154,6 @@ heroku logs --tail -a your-meals-plus-app
 
 Alternatively, build locally with `heroku container:login`, `heroku container:push web -a APP`, then `heroku container:release web -a APP`. Do not copy a database URL into code: Heroku rotates credentials and updates `DATABASE_URL` automatically.
 
-Use [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md) before submission.
 
 ## Repository layout
 
