@@ -45,6 +45,16 @@ class ApiSecurityIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test void seniorCannotAccessRoboCompanionInventory() throws Exception {
+        String token = login("senior@mealsplus.local", "Senior123!");
+        mockMvc.perform(get("/api/robocompanions").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
+    }
+
+    @Test void volunteerCannotAccessRoboCompanionRequests() throws Exception {
+        String token = login("volunteer@mealsplus.local", "Volunteer123!");
+        mockMvc.perform(get("/api/robocompanion-requests").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
+    }
+
     @Test
     void invalidTokenReturnsUnauthorizedJson() throws Exception {
         mockMvc.perform(get("/api/profile").header("Authorization", "Bearer invalid-token"))

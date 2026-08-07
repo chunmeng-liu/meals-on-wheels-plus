@@ -1,88 +1,59 @@
 # Meals on Wheels Plus
 
-Meals on Wheels Plus is a course-project MVP that coordinates meal deliveries and simulated robot companion services for seniors. Seniors submit and track requests, administrators approve/schedule/assign them, and volunteers complete only the work assigned to them.
+Meals on Wheels Plus is a course-project MVP coordinating three separate services for seniors:
+
+1. Meal Delivery
+2. Companion Visit
+3. RoboCompanion Visit
+
+A RoboCompanion represents a physical assistive robot resource in the system. The MVP manages robot inventory, assignment, scheduling, and visit status only; it does not integrate with real robot hardware.
 
 ## Features and roles
 
-- **Senior:** sign in, edit contact/care profile, request meals and companion visits, track status, cancel eligible requests, view schedules and notifications.
-- **Volunteer:** view only assigned deliveries and visits, see the minimum service information needed, advance valid statuses, and record completion notes.
-- **Admin:** view summary counts, create/edit/activate/deactivate users, review and filter requests, approve/reject, schedule companion visits, and assign active volunteers.
-- Backend-enforced JWT authentication, role and ownership checks, validated status transitions, BCrypt passwords, structured validation errors, and in-app notifications.
+- **Senior:** sign in, manage a care profile, request all three services, track status and schedules, see assigned robot details, cancel eligible requests, and view notifications.
+- **Volunteer:** view and complete only assigned Meal Delivery and human Companion Visit work. A volunteer is not treated as a RoboCompanion.
+- **Admin:** manage users, requests, and dashboards; manage RoboCompanion inventory and maintenance/activation; schedule visits; assign only available robots; and complete robot visits.
+- Backend-enforced JWT authentication, role and ownership checks, validated state transitions, BCrypt passwords, validation errors, and in-app notifications.
 
-## Technology
+## Technology and architecture
 
 - React 18, TypeScript, Vite
 - Java 17, Spring Boot 3.3, Spring Security, Spring Data JPA
 - PostgreSQL 16 (H2 is test-only)
-- Docker Compose locally; multi-stage Docker/`heroku.yml` deployment
+- Docker Compose locally; multi-stage Docker and `heroku.yml` deployment
 
-## Architecture
+The application is a modular monolith. The browser sends JSON and JWTs to Spring REST controllers, services enforce lifecycle and ownership rules, and Spring Data JPA persists to PostgreSQL. The production Spring Boot process also serves the compiled React application.
 
-```mermaid
-flowchart LR
-    Browser[React browser app] -->|JSON + JWT| API[Spring REST API]
-    API --> Security[Spring Security]
-    API --> Services[Business services]
-    Services --> JPA[Spring Data JPA]
-    JPA --> DB[(PostgreSQL)]
-    Services --> Notifications[(Notifications)]
-```
+## Data model and lifecycle
 
-The backend is a modular monolith organized into controller, service, repository, domain, DTO, security, and configuration packages. The production Docker image serves the compiled React app and API from one Spring Boot process.
-
-## Data model
-
-- `users` has optional one-to-one `senior_profiles` or `volunteer_profiles`.
-- `meal_requests` belongs to a senior and optionally references an assigned volunteer.
-- `companion_requests` belongs to a senior and optionally references an assigned volunteer.
+- `users` has optional one-to-one senior or volunteer profiles.
+- `meal_requests` and `companion_requests` belong to seniors and may reference volunteers.
+- `robo_companions` stores physical robot inventory, a unique asset tag, activation, and operational status.
+- `robocompanion_visit_requests` belongs to a senior and optionally references one RoboCompanion. A robot retains many historical visits when deactivated.
 - `notifications` belongs to a user.
-- All service/user references use database foreign keys. Emails and profile-to-user relationships are unique.
 
-Status flows are deliberately constrained:
+Status flows are constrained:
 
 - Meal: `REQUESTED → APPROVED → ASSIGNED → PREPARING → OUT_FOR_DELIVERY → DELIVERED`
 - Companion: `REQUESTED → APPROVED → SCHEDULED → ASSIGNED → IN_PROGRESS → COMPLETED`
-- Admins may reject pending requests. Seniors may cancel meals before preparation and companion visits before they begin.
+- RoboCompanion Visit: `REQUESTED → APPROVED → SCHEDULED → ASSIGNED → IN_PROGRESS → COMPLETED`
+- Robot lifecycle: `AVAILABLE → ASSIGNED → IN_SERVICE → AVAILABLE`
 
-## Quick start (single Docker command)
+Admins can reject pending requests. Seniors can cancel before service begins. Cancellation or rejection releases an assigned robot. Maintenance, inactive, assigned, and in-service robots cannot be newly assigned. A locked inventory lookup prevents concurrent double assignment.
 
-Prerequisites: Docker Desktop with Compose.
+## Quick start
+
+Prerequisite: Docker Desktop with Compose.
 
 ```bash
 docker compose up --build
 ```
 
-Open <http://localhost:8080>. This starts PostgreSQL, builds both applications, creates the schema, and seeds local demo users. Stop without deleting data using `docker compose down`. Reset all local data using `docker compose down -v` (destructive).
+Open <http://localhost:8080>. PostgreSQL starts, the schema is updated, and demo data is seeded idempotently. Use `docker compose down` to stop without deleting data. `docker compose down -v` resets local data and is destructive.
 
-## Development mode
+For development, start PostgreSQL with `docker compose up -d postgres`, run `mvn spring-boot:run` in `backend`, then `npm ci` and `npm run dev` in `frontend`. Vite serves <http://localhost:5173> and proxies `/api` to port 8080.
 
-1. Copy `.env.example` to `.env` if you want to customize defaults. Do not commit `.env`.
-2. Start only PostgreSQL:
-
-   ```bash
-   docker compose up -d postgres
-   ```
-
-3. Start the backend:
-
-   ```bash
-   cd backend
-   mvn spring-boot:run
-   ```
-
-4. In a second terminal, start the frontend:
-
-   ```bash
-   cd frontend
-   npm ci
-   npm run dev
-   ```
-
-5. Open <http://localhost:5173>. Vite proxies `/api` to port 8080.
-
-On Windows PowerShell use `npm.cmd` if script execution policy blocks `npm.ps1`.
-
-## Demo accounts
+## Demo data
 
 | Role | Email | Local password |
 |---|---|---|
@@ -90,22 +61,11 @@ On Windows PowerShell use `npm.cmd` if script execution policy blocks `npm.ps1`.
 | Senior | `senior@mealsplus.local` | `Senior123!` |
 | Volunteer | `volunteer@mealsplus.local` | `Volunteer123!` |
 
-These accounts are local demonstration data. Set `DEMO_SEED_ENABLED=false` in a real deployment, or override all `DEMO_*` credentials with secure config vars for a controlled demo deployment. Seeding is idempotent; resetting the Docker volume recreates the default records.
+Robots: `RC-01 / Stretch Alpha / AVAILABLE`, `RC-02 / Stretch Beta / AVAILABLE`, and `RC-03 / Stretch Gamma / MAINTENANCE`. Set `DEMO_SEED_ENABLED=false` in production or override demo credentials with secure configuration.
 
-## Environment variables
+## Configuration
 
-| Variable | Purpose | Local default |
-|---|---|---|
-| `DB_URL` | JDBC PostgreSQL URL | `jdbc:postgresql://localhost:5432/mealsplus` |
-| `DB_USERNAME` | PostgreSQL user | `mealsplus` |
-| `DB_PASSWORD` | PostgreSQL password | `mealsplus` |
-| `DATABASE_URL` | Heroku-style `postgres://` URL; takes precedence when present | unset |
-| `JWT_SECRET` | JWT signing secret; use 32+ random bytes | development-only default |
-| `JWT_EXPIRATION_MS` | Token lifetime | `86400000` |
-| `PORT` | Backend HTTP port | `8080` |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated development frontend origins | `http://localhost:5173` |
-| `DEMO_SEED_ENABLED` | Enable demo accounts | `true` |
-| `DEMO_ADMIN_*`, `DEMO_SENIOR_*`, `DEMO_VOLUNTEER_*` | Optional demo credentials | documented accounts |
+Key variables are `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DATABASE_URL` (Heroku), `JWT_SECRET`, `JWT_EXPIRATION_MS`, `PORT`, `CORS_ALLOWED_ORIGINS`, `DEMO_SEED_ENABLED`, and the `DEMO_*` account values. See `.env.example` for local defaults. Schema evolution uses the existing `spring.jpa.hibernate.ddl-auto=update` MVP strategy.
 
 ## API overview
 
@@ -114,15 +74,17 @@ All endpoints except login and health require `Authorization: Bearer <token>`.
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
-| Profile | `GET/PUT /api/profile`, `PUT /api/profile/senior`, `PUT /api/profile/volunteer` |
+| Profile | `GET/PUT /api/profile`, role profile updates |
 | Users (admin) | `GET/POST /api/users`, `PUT/DELETE /api/users/{id}` |
-| Meals | `POST /api/meal-requests`, `GET /my`, `GET /assigned`, admin `GET /`, admin `PUT /{id}`, volunteer `PUT /{id}/status`, senior `DELETE /{id}` |
-| Companions | Same structure under `/api/companion-requests` |
+| Meals | `/api/meal-requests` create/my/assigned/admin update/volunteer status/cancel operations |
+| Companion Visits | Equivalent operations under `/api/companion-requests` |
+| RoboCompanion inventory (admin) | `GET/POST /api/robocompanions`, `GET/PUT /api/robocompanions/{id}`, `GET /api/robocompanions/available` |
+| RoboCompanion Visits | Senior `POST`, `GET /my`, `GET /{id}`, `DELETE /{id}`; admin `GET`, `GET /{id}`, `PUT /{id}` under `/api/robocompanion-requests` |
 | Notifications | `GET /api/notifications`, `PUT /api/notifications/{id}/read` |
-| Dashboard | `GET /api/dashboard` (admin) |
+| Dashboard | `GET /api/dashboard` (admin), including robot/request metrics |
 | Health | `GET /api/health` |
 
-See [`api-requests.http`](api-requests.http) for executable request examples.
+See `api-requests.http` for executable examples.
 
 ## Tests and builds
 
@@ -136,24 +98,11 @@ npm ci
 npm run build
 ```
 
-Backend tests cover login, controller-level role authorization, token failure behavior, request creation, assignment ownership, cancellation ownership, scheduling requirements, and status transition validation. See [`MANUAL_TEST_CHECKLIST.md`](MANUAL_TEST_CHECKLIST.md) for the three end-to-end workflows.
+Backend tests cover authentication, role and ownership authorization, all existing workflows, RoboCompanion creation and notifications, invalid robot assignment, cancellation release, and request/robot lifecycle transitions. See `MANUAL_TEST_CHECKLIST.md` for manual end-to-end workflows.
 
-## Heroku deployment
+## Deployment
 
-The repository uses a single multi-stage Docker image. The frontend is compiled into Spring Boot static resources, `PORT` is honored, and Heroku's automatically managed `DATABASE_URL` is parsed at startup.
-
-```bash
-heroku login
-heroku create your-meals-plus-app --stack container
-heroku addons:create heroku-postgresql -a your-meals-plus-app
-heroku config:set JWT_SECRET="a-long-random-secret-at-least-32-bytes" DEMO_SEED_ENABLED=false -a your-meals-plus-app
-git push heroku main
-heroku open -a your-meals-plus-app
-heroku logs --tail -a your-meals-plus-app
-```
-
-Alternatively, build locally with `heroku container:login`, `heroku container:push web -a APP`, then `heroku container:release web -a APP`. Do not copy a database URL into code: Heroku rotates credentials and updates `DATABASE_URL` automatically.
-
+The existing multi-stage Docker image compiles the frontend into Spring Boot static resources and honors `PORT`. `docker-compose.yml`, `Dockerfile`, `heroku.yml`, and `app.json` remain compatible. Heroku deployments should provision PostgreSQL and set a strong `JWT_SECRET`; `DATABASE_URL` is parsed automatically.
 
 ## Repository layout
 
@@ -169,8 +118,7 @@ MANUAL_TEST_CHECKLIST.md End-to-end verification steps
 
 ## Known limitations and future work
 
-- Robot companion services are scheduling records only; there is no hardware integration.
-- Schema evolution uses Hibernate `ddl-auto=update`, suitable for this MVP. A production successor should add Flyway migrations.
-- Notifications update on page refresh rather than using WebSockets.
-- There is no password reset, public registration, email/SMS, GPS tracking, route optimization, or pagination.
-- A production deployment should add audit logs, rate limiting, stronger password policy, automated frontend tests, and database backups.
+- There is no robot control, ROS, telemetry, navigation, video, chatbot, voice assistant, or hardware API integration.
+- The MVP treats any assigned/in-progress visit as an exclusive robot booking; visit duration and partial time-window overlap are not modeled.
+- Notifications refresh with the page; there is no WebSocket, SMS, or email delivery.
+- Production successors should add Flyway migrations, audit logs, rate limiting, calendar optimization, stronger password policy, frontend test automation, and database backups.

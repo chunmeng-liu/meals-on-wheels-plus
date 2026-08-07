@@ -29,3 +29,68 @@ Authorization: Bearer {{seniorToken}}
 
 ### Health
 GET {{baseUrl}}/api/health
+
+### Create RoboCompanion Visit request (senior)
+POST {{baseUrl}}/api/robocompanion-requests
+Authorization: Bearer {{seniorToken}}
+Content-Type: application/json
+
+{"requestedDate":"2099-08-12","requestedTime":"14:00","reason":"Mobility and reminder assistance","assistanceNeeds":"Please allow space for a walker","serviceNotes":"Use the side entrance"}
+
+### View own RoboCompanion Visits
+GET {{baseUrl}}/api/robocompanion-requests/my
+Authorization: Bearer {{seniorToken}}
+
+### Login as admin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{"email":"admin@mealsplus.local","password":"Admin123!"}
+
+@adminToken = replace-me
+
+### List RoboCompanion inventory
+GET {{baseUrl}}/api/robocompanions
+Authorization: Bearer {{adminToken}}
+
+### Create RoboCompanion
+POST {{baseUrl}}/api/robocompanions
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"name":"Stretch Delta","assetTag":"RC-04","model":"Stretch","description":"Physical assistive robot","status":"AVAILABLE","active":true,"notes":"Demo unit"}
+
+### Approve request (replace request ID)
+PUT {{baseUrl}}/api/robocompanion-requests/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"status":"APPROVED"}
+
+### Schedule request
+PUT {{baseUrl}}/api/robocompanion-requests/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"status":"SCHEDULED","scheduledAt":"2099-08-12T21:00:00Z"}
+
+### Assign available robot (replace robot ID)
+PUT {{baseUrl}}/api/robocompanion-requests/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"status":"ASSIGNED","assignedRoboCompanionId":1}
+
+### Start service
+PUT {{baseUrl}}/api/robocompanion-requests/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"status":"IN_PROGRESS"}
+
+### Complete service
+PUT {{baseUrl}}/api/robocompanion-requests/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"status":"COMPLETED","completionNotes":"Visit completed successfully"}
