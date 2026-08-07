@@ -16,6 +16,7 @@ public class SeedService {
     private final SeniorProfileRepository seniorProfileRepository;
     private final VolunteerProfileRepository volunteerProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.mealsplus.repository.RoboCompanionRepository roboCompanionRepository;
 
     @Value("${app.demo.enabled:true}") private boolean enabled;
     @Value("${app.demo.admin-email}") private String adminEmail;
@@ -26,11 +27,13 @@ public class SeedService {
     @Value("${app.demo.volunteer-password}") private String volunteerPassword;
 
     public SeedService(UserRepository userRepository, SeniorProfileRepository seniorProfileRepository,
-                       VolunteerProfileRepository volunteerProfileRepository, PasswordEncoder passwordEncoder) {
+                       VolunteerProfileRepository volunteerProfileRepository, PasswordEncoder passwordEncoder,
+                       com.example.mealsplus.repository.RoboCompanionRepository roboCompanionRepository) {
         this.userRepository = userRepository;
         this.seniorProfileRepository = seniorProfileRepository;
         this.volunteerProfileRepository = volunteerProfileRepository;
         this.passwordEncoder = passwordEncoder;
+        this.roboCompanionRepository = roboCompanionRepository;
     }
 
     @PostConstruct
@@ -57,6 +60,16 @@ public class SeedService {
             profile.setAvailabilityNotes("Weekdays after 10:00 AM");
             return volunteerProfileRepository.save(profile);
         });
+        createRobotIfMissing("RC-01", "Stretch Alpha", "Stretch", RoboCompanionStatus.AVAILABLE);
+        createRobotIfMissing("RC-02", "Stretch Beta", "Stretch", RoboCompanionStatus.AVAILABLE);
+        createRobotIfMissing("RC-03", "Stretch Gamma", "Stretch", RoboCompanionStatus.MAINTENANCE);
+    }
+
+    private void createRobotIfMissing(String tag, String name, String model, RoboCompanionStatus status) {
+        if (roboCompanionRepository.findByAssetTagIgnoreCase(tag).isPresent()) return;
+        RoboCompanion robot = new RoboCompanion(); robot.setAssetTag(tag); robot.setName(name); robot.setModel(model);
+        robot.setDescription("Demo physical assistive robot"); robot.setActive(true); robot.setStatus(status);
+        roboCompanionRepository.save(robot);
     }
 
     private User createIfMissing(String email, String password, String firstName, String lastName, Role role) {

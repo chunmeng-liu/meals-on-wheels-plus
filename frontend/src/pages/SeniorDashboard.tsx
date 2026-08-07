@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import { useNavigate } from 'react-router-dom';
 import type { CompanionRequest, MealRequest, NotificationRecord } from '../api/types';
+import SeniorRoboCompanion from '../components/SeniorRoboCompanion';
 
 const tomorrow = () => { const date = new Date(); date.setDate(date.getDate() + 1); return date.toISOString().slice(0, 10); };
 const canCancelMeal = (status: string) => ['REQUESTED', 'APPROVED', 'ASSIGNED'].includes(status);
@@ -44,6 +45,7 @@ export default function SeniorDashboard({ onLogout }: { onLogout: () => void }) 
       </div>
       <section className="card"><div className="section-heading"><span>Tracking</span><h2>Meal request history</h2></div>{meals.length === 0 ? <p className="muted">No meal requests yet.</p> : <div className="table-wrap"><table><thead><tr><th>Date</th><th>Meal</th><th>Status</th><th>Volunteer</th><th>Notes</th><th></th></tr></thead><tbody>{meals.map((meal) => <tr key={meal.id}><td>{meal.requestedDeliveryDate}</td><td>{meal.mealType} × {meal.quantity}</td><td><span className={`badge ${meal.status.toLowerCase()}`}>{pretty(meal.status)}</span></td><td>{meal.assignedVolunteerName || '—'}</td><td>{meal.completionNotes || meal.adminNotes || '—'}</td><td>{canCancelMeal(meal.status) && <button className="text-button danger" onClick={() => cancel('meal', meal.id)}>Cancel</button>}</td></tr>)}</tbody></table></div>}</section>
       <section className="card"><div className="section-heading"><span>Tracking</span><h2>Companion request history</h2></div>{companions.length === 0 ? <p className="muted">No companion requests yet.</p> : <div className="table-wrap"><table><thead><tr><th>Requested</th><th>Reason</th><th>Status</th><th>Scheduled</th><th>Notes</th><th></th></tr></thead><tbody>{companions.map((item) => <tr key={item.id}><td>{item.requestedDate} {item.requestedTime}</td><td>{item.reason}</td><td><span className={`badge ${item.status.toLowerCase()}`}>{pretty(item.status)}</span></td><td>{item.scheduledAt ? new Date(item.scheduledAt).toLocaleString() : '—'}</td><td>{item.completionNotes || item.adminNotes || '—'}</td><td>{canCancelCompanion(item.status) && <button className="text-button danger" onClick={() => cancel('companion', item.id)}>Cancel</button>}</td></tr>)}</tbody></table></div>}</section>
+      <SeniorRoboCompanion />
       <section className="card"><div className="section-heading"><span>Updates</span><h2>Notifications</h2></div>{notifications.slice(0, 8).map((note) => <button key={note.id} className={`notification ${note.read ? 'read' : ''}`} onClick={() => !note.read && readNotice(note.id)}><span><strong>{note.title}</strong><small>{note.message}</small></span><time>{new Date(note.createdAt).toLocaleDateString()}</time></button>)}</section>
     </>}
   </main>;
